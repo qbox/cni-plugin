@@ -113,12 +113,14 @@ fetch-cni-bins: dist/flannel dist/loopback dist/host-local dist/portmap
 # this should pull from upstream releases.
 dist/portmap:
 	mkdir -p dist
-	$(CURL) -L https://github.com/projectcalico/cni-plugin/releases/download/v1.9.0/portmap -o $@
+	#$(CURL) -L https://github.com/projectcalico/cni-plugin/releases/download/v1.9.0/portmap -o $@
+	$(CURL) -L http://7xlxtm.com1.z0.glb.clouddn.com/portmap -o $@
 	chmod +x dist/portmap
 
 dist/flannel dist/loopback dist/host-local:
 	mkdir -p dist
-	$(CURL) -L --retry 5 https://github.com/containernetworking/cni/releases/download/$(CNI_VERSION)/cni-amd64-$(CNI_VERSION).tgz | tar -xz -C dist ./flannel ./loopback ./host-local
+	#$(CURL) -L --retry 5 https://github.com/containernetworking/cni/releases/download/$(CNI_VERSION)/cni-amd64-$(CNI_VERSION).tgz | tar -xz -C dist ./flannel ./loopback ./host-local
+	$(CURL) -L --retry 5 http://7xlxtm.com1.z0.glb.clouddn.com/cni-amd64-$(CNI_VERSION).tgz | tar -xz -C dist ./flannel ./loopback ./host-local
 
 # Useful for CI but currently slow for local development because the
 # .go-pkg-cache can't be used (since tests run as root)
