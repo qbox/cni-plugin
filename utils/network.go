@@ -44,13 +44,24 @@ func DoNetworking(args *skel.CmdArgs, conf NetConf, result *current.Result, logg
 			PeerName: hostVethName,
 		}
 
+		var containerIP net.IPNet
+		for _, addr := range result.IPs {
+			if addr.Version == "4" {
+				containerIP = addr.Address
+				break
+			}
+		}
+
 		if err := netlink.LinkAdd(veth); err != nil {
-			logger.Errorf("Error adding veth %+v: %s", veth, err)
+			logger.Errorf("Error adding veth %+v for container: ID=%s, IP=%s: error %s",
+				veth, args.ContainerID, containerIP.String(), err)
 			return err
 		}
 
 		hostVeth, err := netlink.LinkByName(hostVethName)
 		if err != nil {
+			logger.Errorf("failed to lookup host veth %q for container: ID=%s, IP=%s: error %v",
+				hostVethName, args.ContainerID, containerIP.String(), err)
 			err = fmt.Errorf("failed to lookup %q: %v", hostVethName, err)
 			return err
 		}
@@ -58,11 +69,15 @@ func DoNetworking(args *skel.CmdArgs, conf NetConf, result *current.Result, logg
 		// Explicitly set the veth to UP state, because netlink doesn't always do that on all the platforms with net.FlagUp.
 		// veth won't get a link local address unless it's set to UP state.
 		if err = netlink.LinkSetUp(hostVeth); err != nil {
+			logger.Errorf("failed to set %q up for container: ID=%s, IP=%s: error %v",
+				hostVethName, args.ContainerID, containerIP.String(), err)
 			return fmt.Errorf("failed to set %q up: %v", hostVethName, err)
 		}
 
 		contVeth, err := netlink.LinkByName(contVethName)
 		if err != nil {
+			logger.Errorf("failed to lookup container veth %q up for container: ID=%s, IP=%s: error %v",
+				hostVethName, args.ContainerID, containerIP.String(), err)
 			err = fmt.Errorf("failed to lookup %q: %v", contVethName, err)
 			return err
 		}
@@ -70,6 +85,9 @@ func DoNetworking(args *skel.CmdArgs, conf NetConf, result *current.Result, logg
 		// Fetch the MAC from the container Veth. This is needed by Calico.
 		contVethMAC = contVeth.Attrs().HardwareAddr.String()
 		logger.WithField("MAC", contVethMAC).Debug("Found MAC for container veth")
+
+		logger.Infof("container ID = %s IP = %s found MAC for cotainer veth : %s",
+			args.ContainerID, containerIP.String(), contVethMAC)
 
 		// At this point, the virtual ethernet pair has been created, and both ends have the right names.
 		// Both ends of the veth are still in the container's network namespace.
